@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 enum Status 
 {
@@ -10,47 +12,90 @@ enum Status
     ERROR = 1
 };
 
-const int NUMBER_SUMBOLS_IN_STRING = 16;
+Status readFile (char **buffer, int *strings, long int *size);
+Status giveRealAdresses (char *adress[], char *buffer, long int size, int strings);
+Status sortStrings (int strings, char *adress[]);
+Status compare (char firstSumbol, char secondSumbol);
+Status printSortText (char *adress[], int strings);
+Status RABOTAUPJPJPJ (char *adress[], int stringNumber);
+Status sortToFirstCondition (int strings, char *adress[]);
 
-char text [][NUMBER_SUMBOLS_IN_STRING] = {{"io"}, 
-                                          {"evropa"}, 
-                                          {"ganimed"}, 
-                                          {"calisto"}};
-
-const int STRINGS_NUMBER = sizeof (text)/sizeof (text[0]);
-
-Status sortStrings (char *adress[]);
-Status giveRealAdresses (char *adress[]);
-Status printSortText (char *adress[]);
 
 int main ()
 {
-    char *adress [STRINGS_NUMBER];
+    char *buffer = NULL;
+    int strings = 0;
+    long int size = 0;
 
-    giveRealAdresses (adress);
+    readFile (&buffer, &strings, &size);
 
-    sortStrings (adress);
+    char **adress= (char**)calloc(strings, sizeof(char*));
+    assert (*adress == NULL);
 
-    printSortText (adress);
+    giveRealAdresses (adress, buffer, size, strings);
+
+    sortStrings (strings, adress);
+
+    printSortText (adress, strings);
+
+    sortToFirstCondition (strings, adress);
+
+    printf ("Изначальный вариант текста:\n");
+    printSortText (adress, strings);
+}
+
+Status readFile (char **buffer, int *strings, long int *size)
+{
+
+    FILE * ptrFile = fopen ("text.txt", "rb");
+    //assert (ptrFile == NULL);
+
+    fseek (ptrFile, 0, SEEK_END);
+    *size = ftell (ptrFile);
+    fseek (ptrFile, 0, SEEK_SET);
+
+    *buffer = (char*)calloc (*size+1, sizeof(char));
+    //assert (buffer == NULL);
+
+    fread (*buffer, sizeof(char), *size, ptrFile);
+    (*buffer) [*size] = '\n';
+
+     for (int number = 0; number < *size; number ++)
+    {
+        if ((*buffer)[number] == '\n')
+        {
+            (*strings)++;
+        }
+
+        if ((*buffer)[number] == '\r')
+        {
+            (*buffer)[number] = '\n';
+        }
+    }
+
+    fclose (ptrFile);
 
     return SUCCESS;
 }
 
-Status sortStrings (char *adress[])
+Status giveRealAdresses (char *adress[], char *buffer, long int size, int strings)
 {
-    for (int sortNumber = 0; sortNumber < STRINGS_NUMBER-1; sortNumber++)
+    adress[0] = buffer;
+
+    int numberString = 1;
+
+    for (int numberSumbol = 0; numberSumbol < size; numberSumbol++)
     {
-        for (int string = 0; string < STRINGS_NUMBER-1; string++)
+        if (buffer[numberSumbol] == '\n')
         {
-            for (int sumbolNumber = 0; sumbolNumber < NUMBER_SUMBOLS_IN_STRING; sumbolNumber++)
+            adress[numberString] = &buffer[numberSumbol+2];
+
+            numberSumbol += 2;
+            numberString++;
+
+            if (numberString == strings)
             {
-                if (isalpha (text[string][sumbolNumber]) != 0 && isalpha (text[string+1][sumbolNumber]) != 0 &&
-                    toupper(text[string][sumbolNumber]) > toupper(text[string+1][sumbolNumber]))
-                {
-                    char *variableForCopy = adress[string];
-                    adress[string] = adress[string + 1];
-                    adress[string+1] = variableForCopy;
-                }
+                return SUCCESS;
             }
         }
     }
@@ -58,24 +103,81 @@ Status sortStrings (char *adress[])
     return SUCCESS;
 }
 
-Status giveRealAdresses (char *adress[])
+Status compare (char firstSumbol, char secondSumbol)
 {
-    for (int string = 0; string < STRINGS_NUMBER; string++)
+    if (((isalpha (firstSumbol) != 0 && isalpha (secondSumbol) != 0 &&
+        toupper(firstSumbol) > toupper(secondSumbol)) || isalpha (secondSumbol) == 0) ||
+        firstSumbol == '\n' || secondSumbol == '\n')
     {
-        adress[string] = &text[string][0];
+        return SUCCESS;
+    }
 
-        printf ("%p\n", adress[string]);
+    return ERROR;
+}
+
+Status RABOTAUPJPJPJ (char *adress[], int stringNumber)
+{
+   for (int sumbolNumber = 0; 
+         compare(*(adress[stringNumber] + sumbolNumber), *(adress[stringNumber+1] + sumbolNumber)) == SUCCESS; 
+         sumbolNumber++)
+    {   
+        if (compare (*(adress[stringNumber] + sumbolNumber), *(adress[stringNumber + 1] + sumbolNumber)) == SUCCESS)
+        {
+            char *variableForCopy = adress[stringNumber];
+            adress[stringNumber] = adress[stringNumber + 1];
+            adress[stringNumber+1] = variableForCopy;
+
+            return SUCCESS;
+        } 
     }
 
     return SUCCESS;
 }
 
-Status printSortText(char *adress[])
+Status sortStrings (int strings, char *adress[])
 {
-    for (int string = 0; string < STRINGS_NUMBER; string++)
+
+    for (int numberSort = 0; numberSort < strings - 1; numberSort++)
     {
-        puts (adress[string]);
+        for (int stringNumber = 0; stringNumber < strings - 1; stringNumber++)
+        {
+            RABOTAUPJPJPJ (adress, stringNumber);
+        }
     }
 
     return SUCCESS;
 }
+
+Status printSortText(char *adress[], int strings)
+{
+    for (int string = 0; string < strings; string++)
+    {
+        for (int number = 0; *(adress[string] + number) != '\n'; number++)
+        {
+            printf ("%c", *(adress[string] + number));
+        }
+
+        printf ("\n");
+    }
+
+    return SUCCESS;
+}
+
+Status sortToFirstCondition (int strings, char *adress[])
+{
+    for (int numberSort = 0; numberSort < strings - 1; numberSort++)
+    {
+        for (int stringNumber = 0; stringNumber < strings - 1; stringNumber++)
+        {
+            if (adress[stringNumber] > adress[stringNumber + 1])
+            {
+                char *variableForCopy = adress[stringNumber];
+                adress[stringNumber] = adress[stringNumber + 1];
+                adress[stringNumber+1] = variableForCopy;
+            }
+        }
+    }
+
+    return SUCCESS;
+}
+
